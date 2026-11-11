@@ -30,7 +30,7 @@ Never commit real keys to GitHub. Do not put keys in HTML, client-side JavaScrip
 ## What is implemented in this ZIP
 
 - Premium responsive studio UI with preview, scene strip, inspector panels, storyboard editor, characters, audio panel, transcript panel, timeline controls, and full-screen preview.
-- Prompt-to-storyboard generation through Gemini Flash, with key fallback across `GEMINI_KEY`, `GEMINI_KEY2`, and `GEMINI_KEY3`.
+- Prompt-to-storyboard generation through Gemini Flash, with per-key timeouts and fallback across `GEMINI_KEY`, `GEMINI_KEY2`, and `GEMINI_KEY3`. If Gemini is unavailable or times out, `/api/cartoon` returns a clearly labelled local starter storyboard (for example, a student going to school) so the editor can still be used; the UI clearly says it is a local fallback, not Gemini output.
 - Structured scene and character data validation/normalization in the browser.
 - Local procedural 2D cartoon rendering in Canvas: pencil/paper look, several scene environments, simple character rigs, blinking, expressions, body motion, props, scene markers, animated background details, and scene-specific camera/action descriptions.
 - Real time-based animation preview and a requested 24/30/60 FPS canvas recording target. Actual achieved frame rate is monitored; the browser/device can fall below the selected target.
@@ -38,7 +38,7 @@ Never commit real keys to GitHub. Do not put keys in HTML, client-side JavaScrip
 - Gemini TTS generation, including speaker-labelled dialogue where supported by the selected model.
 - Audio WAV playback and word-level transcript request through Gemini 3.5 Transcribe. If timestamp annotations are not returned, the UI uses clearly marked estimated word timings as a fallback.
 - Viseme-like mouth movement driven by timed words and speech activity, captions, local project persistence in IndexedDB, project JSON import/export, and browser MediaRecorder video export.
-- Progressive errors, request timeouts, input caps, server-side key handling, and basic per-instance rate limits.
+- Progressive errors, bounded 18-second per-key request timeouts, retry across all configured key slots after timeout/quota/transient errors, compact storyboard prompts, local fallback storyboards, input caps, server-side key handling, and basic per-instance rate limits.
 
 ## Important capability boundaries (read before launch)
 
@@ -62,7 +62,15 @@ Not fully implemented in this build:
 - `POST /api/tts` — generate WAV speech audio.
 - `POST /api/transcribe` — request verbatim audio transcription with word timestamps and speaker diarization where supported.
 
-All AI calls happen server-side. The API key fallback is best-effort: the next key is tried on authentication, quota, and transient service errors. It does not merge quotas or guarantee extra capacity. The in-memory rate limiter is per warm function instance, not a durable global limit; use a persistent rate-limit store before opening a public high-traffic service.
+All AI calls happen server-side. The API key fallback is best-effort: each configured key slot is tried with its own bounded timeout on authentication, quota, network and transient service errors. A timed-out first key no longer aborts the whole rotation. It does not merge quotas or guarantee extra capacity. For storyboard generation, the server returns a clearly labelled local fallback when Gemini is unconfigured or unavailable, rather than making the user wait on a dead request. The in-memory rate limiter is per warm function instance, not a durable global limit; use a persistent rate-limit store before opening a public high-traffic service.
+
+## Timeout and fallback behavior
+
+- `POST /api/cartoon` uses a compact storyboard instruction, a 2,400-token output ceiling, and Gemini 3.8 Flash LOW thinking level to keep simple ideas fast. All API routes are capped at 60 seconds in `vercel.json` to remain compatible with Vercel Hobby configurations.
+- Each configured Gemini key gets a separate bounded attempt; an abort on one key proceeds to the next key.
+- Temporary upstream failures, timeouts, and missing Gemini configuration produce a visible local starter storyboard. The studio labels this as `local-fallback`; it must not be mistaken for AI-generated output.
+- A permanent API/model error (for example an invalid model name) remains a visible error so it can be corrected instead of being hidden.
+- Default storyboard model: `gemini-3.8-flash`. This is a current stable model ID in the Gemini model catalog.
 
 ## Vercel request/response limits
 

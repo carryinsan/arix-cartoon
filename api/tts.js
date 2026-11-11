@@ -29,7 +29,7 @@ module.exports = async (req, res) => {
   const ttsModel = process.env.GEMINI_TTS_MODEL || 'gemini-3.8-flash-tts';
   try {
     const prompt = `Synthesize the following cartoon dialogue as natural expressive speech. Speak only the dialogue text, using the speaker labels to switch voices; do not read the speaker labels aloud. Language and locale: ${language}. Use clear diction, warm performance, natural pauses, and consistent character voices.\n\n${combined}`;
-    const result = await geminiRequest(ttsModel, { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: ['AUDIO'], speechConfig: { languageCode: language, ...voiceConfig } } }, { timeoutMs: 90000 });
+    const result = await geminiRequest(ttsModel, { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: ['AUDIO'], speechConfig: { languageCode: language, ...voiceConfig } } }, { timeoutMs: 18000, maxAttempts: 3 });
     const parts = result?.candidates?.[0]?.content?.parts || [];
     const audioPart = parts.find(p => p.inlineData?.data || p.inline_data?.data);
     const audioData = audioPart?.inlineData?.data || audioPart?.inline_data?.data;

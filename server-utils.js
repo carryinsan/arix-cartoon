@@ -44,31 +44,72 @@ async function geminiRequest(model, body, options = {}) {
   const keys = getKeys();
   if (!keys.length) {
     const err = new Error('Gemini API is not configured. Add GEMINI_KEY (and optionally GEMINI_KEY2 / GEMINI_KEY3) in Vercel Project Settings → Environment Variables.');
-    err.status = 503; throw err;
+    err.status = 503;
+    err.code = 'GEMINI_NOT_CONFIGURED';
+    throw err;
   }
-  const timeoutMs = options.timeoutMs || 60000;
-  let lastError;
-  for (let i = 0; i < keys.length; i++) {
+
+  // timeoutMs is deliberately a per-key timeout. A timeout on one key must NOT
+  // prevent the remaining configured keys from being tried.
+  const timeoutMs = Math.max(5000, Math.min(Number(options.timeoutMs) || 18000, 35000));
+  const maxAttempts = Math.max(1, Math.min(Number(options.maxAttempts) || keys.length, keys.length));
+  const retryableStatuses = new Set([408, 425, 429, 500, 502, 503, 504]);
+  const credentialStatuses = new Set([401, 403]);
+  let lastError = null;
+  const attempted = [];
+
+  for (let i = 0; i < maxAttempts; i++) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': keys[i] }, body: JSON.stringify(body), signal: controller.signal
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': keys[i] },
+        body: JSON.stringify(body),
+        signal: controller.signal
       });
       const payload = await response.json().catch(() => ({}));
       if (response.ok) return payload;
+
       const message = payload?.error?.message || `Gemini API returned HTTP ${response.status}`;
-      const err = new Error(message); err.status = response.status; lastError = err;
-      // Rotate only for key/quota/transient problems. Do not mask malformed model requests.
-      if (![401, 403, 429, 500, 502, 503, 504].includes(response.status) || i === keys.length - 1) throw err;
-    } catch (err) {
+      const err = new Error(message);
+      err.status = response.status;
+      err.code = `GEMINI_HTTP_${response.status}`;
       lastError = err;
-      if (err.name === 'AbortError') { const timeout = new Error('Gemini request timed out. Try a shorter prompt.'); timeout.status = 504; throw timeout; }
-      if (err.status && ![401, 403, 429, 500, 502, 503, 504].includes(err.status)) throw err;
-      if (i === keys.length - 1) throw err;
-    } finally { clearTimeout(timer); }
+      attempted.push({ slot: i + 1, status: response.status });
+
+      // Invalid request/model errors cannot be fixed by rotating credentials.
+      if (!retryableStatuses.has(response.status) && !credentialStatuses.has(response.status)) throw err;
+    } catch (err) {
+      if (err.name === 'AbortError' || err.code === 'UND_ERR_CONNECT_TIMEOUT' || err.code === 'ETIMEDOUT') {
+        const timeout = new Error(`Gemini did not respond within ${Math.round(timeoutMs / 1000)} seconds using key slot ${i + 1}.`);
+        timeout.status = 504;
+        timeout.code = 'GEMINI_TIMEOUT';
+        lastError = timeout;
+        attempted.push({ slot: i + 1, status: 'timeout' });
+      } else {
+        lastError = err;
+        if (err.status && !retryableStatuses.has(err.status) && !credentialStatuses.has(err.status)) throw err;
+        if (!err.status && i === maxAttempts - 1) throw err;
+      }
+    } finally {
+      clearTimeout(timer);
+    }
+
+    // Small bounded delay for upstream throttling; never spin or retry forever.
+    if (i < maxAttempts - 1 && lastError && (lastError.status === 429 || lastError.status === 503)) {
+      await new Promise(resolve => setTimeout(resolve, 250 * (i + 1)));
+    }
   }
-  throw lastError || new Error('Gemini request failed.');
+
+  if (lastError) {
+    lastError.attemptedKeys = attempted.length;
+    lastError.message = `${lastError.message} Tried ${attempted.length} configured key slot(s).`;
+    throw lastError;
+  }
+  const err = new Error('Gemini request failed before a response was received.');
+  err.status = 502;
+  throw err;
 }
 function extractText(payload) {
   const parts = payload?.candidates?.[0]?.content?.parts || [];

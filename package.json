@@ -5,7 +5,7 @@
   "description": "Browser-native 2D cartoon studio with Gemini storyboard generation, voice, captions and video export.",
   "type": "commonjs",
   "scripts": {
-    "check": "node --check app.js && node --check cartoon-engine.js && node --check server-utils.js && node --check api/cartoon.js && node --check api/tts.js && node --check api/transcribe.js && node --check api/health.js"
+    "check": "node --check app.js && node --check cartoon-engine.js && node --check server-utils.js && node --check api/cartoon.js && node --check api/tts.js && node --check api/transcribe.js && node --check api/health.js && node tests/smoke.js"
   },
   "engines": {
     "node": ">=20"

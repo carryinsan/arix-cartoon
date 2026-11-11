@@ -24,7 +24,7 @@ module.exports = async (req, res) => {
     const result = await geminiRequest(model, {
       contents: [{ parts: [{ text: 'Transcribe the supplied audio verbatim. Preserve the exact spoken words. Return word-level timestamps and speaker labels when possible.' }, { inlineData: { mimeType, data: audio.toString('base64') } }] }],
       generationConfig: { audioTranscriptionConfig: { wordTimestamp: true, diarization: true, languageCodes: body.language ? [String(body.language).slice(0, 20)] : [] } }
-    }, { timeoutMs: 90000 });
+    }, { timeoutMs: 18000, maxAttempts: 3 });
     const transcript = extractText(result);
     const words = findWordAnnotations(result);
     // Some REST responses include timestamp data in text/annotations; never fabricate exact timestamps here.
