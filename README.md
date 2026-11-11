@@ -19,6 +19,13 @@ A browser-native, dependency-light 2D cartoon studio for Vercel. The archive is 
 
 Never commit real keys to GitHub. Do not put keys in HTML, client-side JavaScript, browser storage, or a public `.env` file. Vercel environment variables are injected into server-side functions only.
 
+## Frontend null-reference fixes (1.0.2)
+
+- Clearing or replacing audio before the first project now safely handles `state.project === null`. This affects first-time storyboard generation and the sample-project buttons.
+- The storyboard editor now toggles the actual `#scene-editor` empty-state element (the former code referenced a nonexistent `#editor-empty` ID).
+- Starting a new project now resets the scene editor, character list, and metrics to their empty states.
+- `npm run check` verifies all literal DOM IDs referenced by `app.js` exist in `index.html`, and checks the null guards for these paths.
+
 ## Local development
 
 - Install Node.js 20+ and Vercel CLI (`npm i -g vercel`).

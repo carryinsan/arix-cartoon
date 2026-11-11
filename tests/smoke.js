@@ -64,6 +64,21 @@ async function run() {
   ['GEMINI_KEY', 'GEMINI_KEY2', 'GEMINI_KEY3'].forEach((k, i) => {
     if (saved[i] === undefined) delete process.env[k]; else process.env[k] = saved[i];
   });
+
+  // Frontend contract checks: every literal element lookup must exist in index.html.
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const appSource = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const appIds = new Set([...appSource.matchAll(/\$\('([^']+)'\)/g)].map(m => m[1]));
+  const htmlIds = new Set([...htmlSource.matchAll(/\bid=["']([^"']+)["']/g)].map(m => m[1]));
+  const missingIds = [...appIds].filter(id => !htmlIds.has(id));
+  assert.deepEqual(missingIds, [], 'all frontend element IDs referenced by app.js must exist');
+  assert.match(appSource, /function clearAudio\(\)\{[^}]*if\(state\.project\)\{state\.project\.words=\[\];/,
+    'clearing audio before the first project must not dereference null');
+  assert.match(appSource, /const empty=\$\('scene-editor'\)/,
+    'scene editor must toggle the actual empty-state element');
+
   console.log('ArixCartoon smoke tests passed.');
 }
 
