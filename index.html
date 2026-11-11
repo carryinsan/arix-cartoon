@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f3ee">
+  <meta name="description" content="ArixCartoon — turn ideas into animated pencil cartoons with voice, captions, and an editable storyboard.">
+  <title>ArixCartoon Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="ArixCartoon home">
+        <span class="brand-mark"><span></span><span></span><span></span></span>
+        <span>Arix<span>Cartoon</span></span>
+        <small>STUDIO</small>
+      </a>
+      <div class="topbar-center"><span class="live-dot"></span><span id="project-status">New project</span><span class="topbar-sep">/</span><span class="muted">Local-first workspace</span></div>
+      <div class="topbar-actions">
+        <button class="icon-button" id="help-button" title="Studio guide" aria-label="Studio guide">?</button>
+        <button class="button button-quiet" id="save-project">Save project</button>
+        <button class="button button-dark" id="export-top">Export video <span aria-hidden="true">↗</span></button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="left-rail">
+        <div class="rail-heading">WORKSPACE</div>
+        <button class="rail-item active" data-panel="create"><span class="rail-icon">✳</span><span>Create</span></button>
+        <button class="rail-item" data-panel="storyboard"><span class="rail-icon">▦</span><span>Storyboard</span></button>
+        <button class="rail-item" data-panel="characters"><span class="rail-icon">♙</span><span>Characters</span></button>
+        <button class="rail-item" data-panel="audio"><span class="rail-icon">♫</span><span>Audio & words</span></button>
+        <button class="rail-item" data-panel="timeline"><span class="rail-icon">⌁</span><span>Timeline</span></button>
+        <div class="rail-bottom">
+          <div class="rail-heading">PROJECT</div>
+          <button class="rail-item" id="new-project"><span class="rail-icon">＋</span><span>New project</span></button>
+          <button class="rail-item" id="open-project"><span class="rail-icon">◫</span><span>Open project</span></button>
+          <button class="rail-item" id="export-project"><span class="rail-icon">⇩</span><span>Export project</span></button>
+          <input type="file" id="project-file" accept="application/json,.arixcartoon" hidden>
+          <div class="storage-note"><span class="storage-dot"></span><span>Autosave is stored in this browser</span></div>
+        </div>
+      </aside>
+
+      <section class="main-column">
+        <div class="canvas-toolbar">
+          <div class="breadcrumb"><span>My workspace</span><b>/</b><strong id="project-name-label">Untitled cartoon</strong></div>
+          <div class="canvas-toolbar-right">
+            <label class="compact-label" for="aspect-select">FORMAT</label>
+            <select id="aspect-select" class="small-select"><option value="16:9">Landscape 16:9</option><option value="9:16">Shorts 9:16</option><option value="1:1">Square 1:1</option><option value="4:5">Portrait 4:5</option></select>
+            <span class="toolbar-divider"></span>
+            <label class="compact-label" for="fps-select">FPS</label>
+            <select id="fps-select" class="small-select"><option value="24">24</option><option value="30">30</option><option value="60">60</option></select>
+          </div>
+        </div>
+
+        <section class="preview-wrap" aria-label="Animation preview">
+          <div class="preview-topline">
+            <div class="preview-label"><span class="record-dot"></span> LIVE CANVAS <span class="pill" id="render-state">READY</span></div>
+            <div class="preview-meta"><span id="preview-scene-count">0 scenes</span><span class="preview-meta-dot">·</span><span id="preview-duration">00:00</span></div>
+          </div>
+          <div class="stage-frame" id="stage-frame">
+            <canvas id="cartoon-canvas" width="1280" height="720" aria-label="Animated cartoon preview"></canvas>
+            <div class="stage-caption" id="stage-caption" aria-live="polite"></div>
+            <div class="stage-empty" id="stage-empty">
+              <div class="empty-pencil">✎</div>
+              <div class="empty-title">Your story starts here.</div>
+              <p>Describe an idea, generate a storyboard, and bring your characters to life.</p>
+              <button class="button button-dark" id="try-sample">Open sample cartoon <span>→</span></button>
+            </div>
+            <div class="stage-overlay-top"><span class="overlay-tag">ARIX / FRAME 01</span><span class="overlay-tag" id="preview-style-tag">PENCIL SKETCH</span></div>
+          </div>
+          <div class="playback-bar">
+            <div class="playback-controls">
+              <button class="round-control" id="restart-playback" title="Restart">↺</button>
+              <button class="play-button" id="play-pause" title="Play">▶</button>
+              <button class="round-control" id="step-back" title="Previous scene">‹</button>
+              <button class="round-control" id="step-forward" title="Next scene">›</button>
+              <span class="time-readout" id="time-readout">00:00 / 00:00</span>
+            </div>
+            <div class="playback-right"><button class="text-control" id="toggle-captions">CC Captions <span class="toggle-indicator on"></span></button><button class="text-control" id="fullscreen-preview">⛶ Full screen</button></div>
+          </div>
+          <div class="scrub-track" id="scrub-track"><div class="scrub-fill" id="scrub-fill"></div><input id="scrub-input" type="range" min="0" max="1000" value="0" aria-label="Seek animation"></div>
+        </section>
+
+        <section class="timeline-preview-panel">
+          <div class="section-head"><div><span class="eyebrow">YOUR FILM</span><h2>Scene sequence <span class="count-pill" id="scene-count-pill">0</span></h2></div><button class="button button-quiet button-small" id="add-scene">＋ Add scene</button></div>
+          <div class="scene-strip" id="scene-strip"><div class="scene-strip-empty">Your scenes will appear here after storyboard generation.</div></div>
+        </section>
+      </section>
+
+      <aside class="inspector" id="inspector">
+        <div class="inspector-tabs">
+          <button class="inspector-tab active" data-panel="create">Create</button>
+          <button class="inspector-tab" data-panel="storyboard">Edit</button>
+          <button class="inspector-tab" data-panel="audio">Audio</button>
+        </div>
+
+        <div class="panel-content active" id="panel-create">
+          <div class="panel-title-row"><div><div class="eyebrow">AI STORY DIRECTOR</div><h1>Make a cartoon.</h1></div><span class="sparkle">✳</span></div>
+          <p class="panel-intro">Turn a thought into a hand-drawn animated story. Shape the story first, then direct every scene.</p>
+          <label class="field-label" for="prompt-input">WHAT SHOULD HAPPEN?</label>
+          <textarea id="prompt-input" rows="5" maxlength="1800" placeholder="A nervous student has one night to prepare for an exam. A tiny pencil character becomes their unexpected coach..."></textarea>
+          <div class="field-foot"><span>Give the story a character, goal, or twist.</span><span id="prompt-count">0 / 1800</span></div>
+          <div class="field-grid">
+            <div class="field"><label class="field-label" for="style-select">ART DIRECTION</label><select id="style-select"><option value="pencil">Pencil cartoon</option><option value="coloured-pencil">Coloured pencil</option><option value="ink">Ink & paper</option><option value="comic">Comic sketch</option><option value="whiteboard">Whiteboard</option><option value="flat">Clean 2D</option></select></div>
+            <div class="field"><label class="field-label" for="duration-select">LENGTH</label><select id="duration-select"><option value="30">30 seconds</option><option value="45" selected>45 seconds</option><option value="60">60 seconds</option><option value="90">90 seconds</option></select></div>
+          </div>
+          <div class="field-grid">
+            <div class="field"><label class="field-label" for="tone-select">STORY MOOD</label><select id="tone-select"><option>Warm & uplifting</option><option>Funny & playful</option><option>Educational</option><option>Dramatic</option><option>Adventure</option><option>Calm & thoughtful</option></select></div>
+            <div class="field"><label class="field-label" for="language-select">LANGUAGE</label><select id="language-select"><option value="en-IN">English (India)</option><option value="hi-IN">Hindi</option><option value="gu-IN">Gujarati</option><option value="mr-IN">Marathi</option><option value="bn-IN">Bengali</option><option value="ta-IN">Tamil</option><option value="te-IN">Telugu</option></select></div>
+          </div>
+          <div class="style-swatches"><span class="field-label">STYLE PREVIEW</span><div class="swatch-row"><button class="style-swatch selected" data-style="pencil"><span class="swatch-art pencil-art">✎</span><b>Pencil</b></button><button class="style-swatch" data-style="comic"><span class="swatch-art comic-art">POP!</span><b>Comic</b></button><button class="style-swatch" data-style="whiteboard"><span class="swatch-art board-art">Aa</span><b>Board</b></button><button class="style-swatch" data-style="flat"><span class="swatch-art flat-art">●</span><b>2D</b></button></div></div>
+          <button class="button button-primary generate-button" id="generate-story"><span>✳</span> Generate storyboard <span class="button-arrow">→</span></button>
+          <div class="under-button-note"><span class="secure-mark">⌑</span> Gemini keys stay on the server. Your project stays in this browser.</div>
+          <div class="divider-label"><span>OR START WITH</span></div>
+          <button class="sample-row" id="sample-project"><span class="sample-icon">✎</span><span><b>Sample: The Last-Minute Student</b><small>5 scenes · pencil sketch · sample story</small></span><span class="sample-arrow">↗</span></button>
+          <div class="api-status" id="api-status"><span class="status-dot pending"></span><span>Checking AI connection…</span></div>
+        </div>
+
+        <div class="panel-content" id="panel-storyboard">
+          <div class="eyebrow">DIRECTOR'S DESK</div><h2>Storyboard editor</h2><p class="panel-intro">Select a scene in the sequence to edit its dialogue, action, mood, and timing.</p>
+          <div id="scene-editor" class="editor-empty"><span class="editor-empty-icon">▦</span><b>No scene selected</b><span>Generate a storyboard or select a scene below the preview.</span></div>
+          <div class="editor-tools" id="editor-tools" hidden>
+            <div class="field"><label class="field-label" for="scene-title">SCENE TITLE</label><input id="scene-title" type="text" maxlength="80"></div>
+            <div class="field"><label class="field-label" for="scene-setting">SETTING</label><input id="scene-setting" type="text" maxlength="100"></div>
+            <div class="field"><label class="field-label" for="scene-action">WHAT HAPPENS</label><textarea id="scene-action" rows="3" maxlength="500"></textarea></div>
+            <div class="field"><label class="field-label" for="scene-dialogue">DIALOGUE / NARRATION</label><textarea id="scene-dialogue" rows="4" maxlength="900"></textarea></div>
+            <div class="field-grid"><div class="field"><label class="field-label" for="scene-emotion">EMOTION</label><select id="scene-emotion"><option>curious</option><option>happy</option><option>sad</option><option>angry</option><option>surprised</option><option>calm</option><option>excited</option></select></div><div class="field"><label class="field-label" for="scene-duration">SECONDS</label><input id="scene-duration" type="number" min="3" max="30" step="1"></div></div>
+            <button class="button button-primary button-full" id="save-scene-edit">Apply scene edits</button>
+            <div class="button-row"><button class="button button-quiet button-small" id="regenerate-scene">↻ Rewrite this scene</button><button class="button button-danger-quiet button-small" id="delete-scene">Delete</button></div>
+          </div>
+          <div class="section-divider"></div>
+          <div class="field-label">SCENE ACTIONS</div><button class="list-action" id="duplicate-scene">▣ Duplicate selected scene <span>→</span></button><button class="list-action" id="move-scene-left">← Move scene earlier</button><button class="list-action" id="move-scene-right">Move scene later →</button>
+        </div>
+
+        <div class="panel-content" id="panel-characters">
+          <div class="eyebrow">CAST & DESIGN</div><h2>Characters</h2><p class="panel-intro">Your cast is stored with the project and reused scene to scene.</p>
+          <div class="character-list" id="character-list"><div class="editor-empty"><span class="editor-empty-icon">♙</span><b>Your cast will appear here</b><span>Generate a storyboard to create persistent characters.</span></div></div>
+          <div class="section-divider"></div><div class="field-label">CHARACTER CONSISTENCY</div><div class="feature-note"><b>Identity lock</b><p>Character colours, proportions, names and voice assignments are held in the project data. The renderer reuses the same 2D rig across scenes.</p><span class="feature-state">ACTIVE FOR PROJECT</span></div>
+        </div>
+
+        <div class="panel-content" id="panel-audio">
+          <div class="eyebrow">SOUND & SPEECH</div><h2>Audio studio</h2><p class="panel-intro">Generate voice narration, inspect the transcript, and preview word timing.</p>
+          <div class="audio-card"><div class="audio-card-head"><span class="audio-icon">♫</span><span><b>Gemini speech</b><small id="audio-state">No audio generated</small></span><span class="audio-badge" id="audio-badge">READY</span></div><label class="field-label" for="voice-select">VOICE</label><select id="voice-select"><option value="Kore">Kore · expressive</option><option value="Puck">Puck · lively</option><option value="Charon">Charon · deep</option><option value="Aoede">Aoede · warm</option><option value="Fenrir">Fenrir · bold</option><option value="Leda">Leda · gentle</option><option value="Orus">Orus · steady</option><option value="Zephyr">Zephyr · bright</option></select><button class="button button-primary button-full" id="generate-audio">Generate voice & sync words</button><audio id="voice-audio" controls preload="metadata"></audio><div class="audio-actions"><button class="button button-quiet button-small" id="regenerate-audio">↻ Regenerate audio</button><button class="button button-quiet button-small" id="download-audio">↓ WAV</button></div><div class="audio-actions export-caption-actions"><button class="button button-quiet button-small" id="export-srt">↓ SRT</button><button class="button button-quiet button-small" id="export-vtt">↓ VTT</button><button class="button button-quiet button-small" id="export-transcript">↓ TXT</button></div></div>
+          <div class="transcript-head"><div class="field-label">LIVE TRANSCRIPT</div><span class="micro-pill" id="transcript-count">0 WORDS</span></div><div class="transcript-box" id="transcript-box"><span class="muted">Your timestamped words will appear here after speech generation and synchronization.</span></div>
+          <div class="sync-note"><span>ⓘ</span><span>Word timestamps are obtained from the speech transcription pass when available. Mouth shapes are generated from timed phoneme/viseme heuristics; exact phoneme alignment is not guaranteed.</span></div>
+        </div>
+
+        <div class="panel-content" id="panel-timeline">
+          <div class="eyebrow">ANIMATION CONTROL</div><h2>Timeline</h2><p class="panel-intro">Control playback, frame rate, and captions for the rendered project.</p>
+          <div class="field"><label class="field-label" for="fps-select-alt">PREVIEW / EXPORT TARGET</label><select id="fps-select-alt"><option value="24">24 FPS · film baseline</option><option value="30">30 FPS · smooth</option><option value="60">60 FPS · high refresh</option></select></div>
+          <div class="feature-note"><b>Real frame timing</b><p>Canvas animation uses elapsed time with a capped render loop. Export frame rate is requested from the browser recorder where supported; actual recorder output can vary with device load.</p></div>
+          <div class="field-label" style="margin-top:22px">CAPTIONS</div><label class="switch-row"><span>Show word captions on stage</span><input type="checkbox" id="caption-setting" checked><i></i></label><label class="switch-row"><span>Highlight spoken word</span><input type="checkbox" id="word-highlight-setting" checked><i></i></label>
+          <div class="field-label" style="margin-top:22px">QUALITY MONITOR</div><div class="quality-grid"><div><strong id="quality-fps">—</strong><small>Preview FPS</small></div><div><strong id="quality-scenes">0</strong><small>Scenes</small></div><div><strong id="quality-assets">0</strong><small>Characters</small></div></div>
+          <div class="sync-note"><span>ⓘ</span><span>Browser support, CPU/GPU load, and available memory determine the achieved frame rate. The app never fabricates FPS readings.</span></div>
+        </div>
+      </aside>
+    </main>
+
+    <div class="toast-region" id="toast-region" aria-live="polite"></div>
+    <dialog class="modal" id="help-modal"><div class="modal-head"><div><div class="eyebrow">QUICK GUIDE</div><h2>Welcome to ArixCartoon</h2></div><button class="icon-button" id="close-help" aria-label="Close">×</button></div><div class="modal-body"><p><b>1. Write your idea.</b> Generate a storyboard with Gemini Flash. Every scene becomes an editable animation instruction.</p><p><b>2. Direct the film.</b> Edit scene actions, duration, character consistency, and visual style.</p><p><b>3. Add voice.</b> Generate Gemini speech, then request word-level timestamps from the transcription endpoint when available.</p><p><b>4. Export.</b> Record the animated canvas with audio using your browser's MediaRecorder. WebM is the usual browser-supported format; MP4 appears only when your browser supports it.</p><p class="modal-warning">This is a browser-based 2D cartoon studio, not a neural video generator. Advanced 3D animation, perfect phoneme alignment, frame-accurate MP4 encoding, and cloud project sync are not included in this build.</p></div><div class="modal-footer"><button class="button button-dark" id="got-it">Let's create</button></div></dialog>
+  </div>
+
+  <script src="cartoon-engine.js" defer></script>
+  <script src="app.js" defer></script>
+</body>
+</html>
