@@ -15,16 +15,46 @@ module.exports = async (req, res) => {
   const body = json(req);
   const lines = Array.isArray(body.lines) ? body.lines.slice(0, 80).map(l => ({ speaker: capText(l.speaker || 'Narrator', 40).trim() || 'Narrator', text: capText(l.text || '', 600).trim() })).filter(l => l.text) : [];
   if (!lines.length) return send(res, 400, { error: 'No dialogue or narration was supplied.' });
-  const combined = lines.map(l => `${l.speaker}: ${l.text}`).join('\n');
-  if (combined.length > 3200) return send(res, 413, { error: 'Voice script is too long. Keep it under 3,200 characters and split longer cartoons into shorter voice tracks.' });
+  const combinedRaw = lines.map(l => `${l.speaker}: ${l.text}`).join('\n');
+  if (combinedRaw.length > 3200) return send(res, 413, { error: 'Voice script is too long. Keep it under 3,200 characters and split longer cartoons into shorter voice tracks.' });
   const defaultVoice = capText(body.voice || 'Kore', 24);
   const availableVoices = new Set(['Kore', 'Puck', 'Charon', 'Aoede', 'Fenrir', 'Leda', 'Orus', 'Zephyr']);
-  const speakerMap = body.speakers && typeof body.speakers === 'object' ? body.speakers : {};
-  const names = [...new Set(lines.map(l => l.speaker))].slice(0, 4);
-  const multiSpeaker = names.length > 1;
+  const requestedVoices = body.speakers && typeof body.speakers === 'object' ? body.speakers : {};
+  const allNames = [...new Set(lines.map(l => l.speaker))];
+  // Gemini's native multi-speaker endpoint accepts exactly TWO voice configs.
+  // Keep every cast name in the dialogue, but route third+ speakers to speaker B.
+  const castNames = allNames.filter(name => name.toLowerCase() !== 'narrator');
+  // Prefer two actual character voices when narration is also present; narration
+  // shares the lead character's voice because this endpoint supports only two voices.
+  const aliases = allNames.length > 1
+    ? (castNames.length >= 2 ? castNames.slice(0, 2) : allNames.slice(0, 2))
+    : allNames.slice(0, 1);
+  const speakerAlias = new Map();
+  allNames.forEach(name => {
+    const castIndex = castNames.indexOf(name);
+    if (name.toLowerCase() === 'narrator') {
+      speakerAlias.set(name, castNames.length >= 2 ? aliases[0] : aliases[0]);
+    } else if (castNames.length === 1 && allNames.length > 1) {
+      speakerAlias.set(name, aliases[1]);
+    } else {
+      speakerAlias.set(name, aliases[Math.min(Math.max(0, castIndex), 1)]);
+    }
+  });
+  const multiSpeaker = aliases.length === 2;
+  const voiceFor = (name, i) => {
+    const selected = requestedVoices[name] || (i === 0 ? defaultVoice : 'Puck');
+    return availableVoices.has(selected) ? selected : (i === 0 ? defaultVoice : 'Puck');
+  };
   const voiceConfig = multiSpeaker ? {
-    multiSpeakerVoiceConfig: { speakerVoiceConfigs: names.map((speaker, i) => ({ speaker, voiceConfig: { prebuiltVoiceConfig: { voiceName: availableVoices.has(speakerMap[speaker]) ? speakerMap[speaker] : (i === 0 ? defaultVoice : 'Puck') } } })) }
-  } : { voiceConfig: { prebuiltVoiceConfig: { voiceName: availableVoices.has(speakerMap[names[0]]) ? speakerMap[names[0]] : defaultVoice } } };
+    multiSpeakerVoiceConfig: {
+      speakerVoiceConfigs: [
+        { speaker: aliases[0], voiceConfig: { prebuiltVoiceConfig: { voiceName: voiceFor(aliases[0], 0) } } },
+        { speaker: aliases[1], voiceConfig: { prebuiltVoiceConfig: { voiceName: voiceFor(aliases[1], 1) } } }
+      ]
+    }
+  } : { voiceConfig: { prebuiltVoiceConfig: { voiceName: voiceFor(aliases[0], 0) } } };
+  const speechLines = lines.map(l => ({ ...l, speaker: speakerAlias.get(l.speaker) || aliases[0] }));
+  const combined = speechLines.map(l => `${l.speaker}: ${l.text}`).join('\n');
   const language = capText(body.language || 'en-IN', 20);
   const ttsModel = process.env.GEMINI_TTS_MODEL || 'gemini-3.8-flash-tts';
   try {
@@ -39,7 +69,7 @@ module.exports = async (req, res) => {
     const isWav = raw.length > 12 && raw.toString('ascii', 0, 4) === 'RIFF';
     const wav = isWav ? raw : pcmToWav(raw, 24000, 1);
     if (wav.length > 3_250_000) return send(res, 413, { error: 'Generated audio is too large for a single Vercel function response. Shorten the script or render it scene by scene.' });
-    return send(res, 200, { audioBase64: wav.toString('base64'), mimeType: 'audio/wav', model: ttsModel, sampleRate: 24000, multiSpeaker, audioBytes: wav.length });
+    return send(res, 200, { audioBase64: wav.toString('base64'), mimeType: 'audio/wav', model: ttsModel, sampleRate: 24000, multiSpeaker, audioBytes: wav.length, speakerLimitApplied: allNames.length > 2, speakerNote: allNames.length > 2 ? 'Gemini supports two distinct voices per multi-speaker request; additional cast members share the second configured voice for this track.' : null });
   } catch (error) {
     console.error('ArixCartoon TTS error:', error.message);
     return send(res, error.status || 502, { error: error.message || 'Speech generation failed.' });

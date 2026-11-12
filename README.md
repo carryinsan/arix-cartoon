@@ -19,6 +19,15 @@ A browser-native, dependency-light 2D cartoon studio for Vercel. The archive is 
 
 Never commit real keys to GitHub. Do not put keys in HTML, client-side JavaScript, browser storage, or a public `.env` file. Vercel environment variables are injected into server-side functions only.
 
+## Visual quality and voice fixes (1.1.0)
+
+- Scene-specific environments now distinguish bedrooms, study rooms, classrooms, school entrances/gates, streets, shops, offices and nature settings instead of treating every setting containing the word “school” as a classroom.
+- Character rendering now supports distinct skin tones, hair styles, face shapes, accessories, clothing patterns, proportions and trouser colours. Deterministic identity-based traits keep a character visually recognizable when optional fields are absent.
+- Motion is action-aware: walking/running has articulated alternating legs and arm swing; scenes can trigger stretching, waving, sitting, writing, bending, pointing and jumping poses. Word activity drives facial mouth movement.
+- Added environmental movement (clouds, street birds, celebration flecks and moving road markings), more contextual props, and camera-specific framing. Removed the previous large italic action-description overlay that obscured the artwork.
+- Multi-speaker Gemini TTS now sends exactly two voice configurations when multi-speaker mode is enabled. Google Gemini multi-speaker TTS accepts exactly two configured speakers; when a Narrator and two named characters are present, the two character voices are prioritized and Narrator shares the lead character's configured voice. Additional cast members share the second configured voice for that audio render. This avoids the validation error but does not create unlimited distinct simultaneous voices.
+- `npm run check` now includes a three-speaker TTS request test and a renderer smoke test exercising multiple environments and action poses.
+
 ## Frontend null-reference fixes (1.0.2)
 
 - Clearing or replacing audio before the first project now safely handles `state.project === null`. This affects first-time storyboard generation and the sample-project buttons.
@@ -39,10 +48,10 @@ Never commit real keys to GitHub. Do not put keys in HTML, client-side JavaScrip
 - Premium responsive studio UI with preview, scene strip, inspector panels, storyboard editor, characters, audio panel, transcript panel, timeline controls, and full-screen preview.
 - Prompt-to-storyboard generation through Gemini Flash, with per-key timeouts and fallback across `GEMINI_KEY`, `GEMINI_KEY2`, and `GEMINI_KEY3`. If Gemini is unavailable or times out, `/api/cartoon` returns a clearly labelled local starter storyboard (for example, a student going to school) so the editor can still be used; the UI clearly says it is a local fallback, not Gemini output.
 - Structured scene and character data validation/normalization in the browser.
-- Local procedural 2D cartoon rendering in Canvas: pencil/paper look, several scene environments, simple character rigs, blinking, expressions, body motion, props, scene markers, animated background details, and scene-specific camera/action descriptions.
+- Local procedural 2D cartoon rendering in Canvas: pencil/paper look, several scene environments, action-aware 2D character rigs, deterministic character-specific visual traits, blinking, expressions, articulated walk/run/sit/stretch/wave/write/bend/point/jump poses, timed multi-action micro-choreography within compound scene actions, contextual props, distinct setting-specific backgrounds, camera framing and animated environmental details.
 - Real time-based animation preview and a requested 24/30/60 FPS canvas recording target. Actual achieved frame rate is monitored; the browser/device can fall below the selected target.
 - Scene selection, editing, duplication, deletion, reordering, and AI rewrite of a single scene.
-- Gemini TTS generation, including speaker-labelled dialogue where supported by the selected model.
+- Gemini TTS generation with speaker-labelled dialogue. Multi-speaker TTS is constrained to two distinct voices per request by the Gemini API; extra cast names are deterministically mapped to those two voices to avoid invalid requests.
 - Audio WAV playback and word-level transcript request through Gemini 3.5 Transcribe. If timestamp annotations are not returned, the UI uses clearly marked estimated word timings as a fallback.
 - Viseme-like mouth movement driven by timed words and speech activity, captions, local project persistence in IndexedDB, project JSON import/export, and browser MediaRecorder video export.
 - Progressive errors, bounded 18-second per-key request timeouts, retry across all configured key slots after timeout/quota/transient errors, compact storyboard prompts, local fallback storyboards, input caps, server-side key handling, and basic per-instance rate limits.
@@ -54,7 +63,7 @@ This is a substantial **working 2D studio foundation**, not a finished professio
 Not fully implemented in this build:
 
 - True hand-drawn raster illustration generation, AI-generated bespoke backgrounds, a large polished asset/pose library, or 3D animation. The current drawing engine is procedural Canvas art.
-- Studio-grade bone rigging for arbitrary characters, detailed hands, realistic walk/run/prop interaction, collision physics, dynamic clothing/hair, and full scene continuity validation.
+- Studio-grade bone rigging for arbitrary characters, detailed hand animation, fully naturalistic walk/run/prop interaction, collision physics, dynamic clothing/hair simulation, and full scene continuity validation. Current character rigs are procedural 2D rigs with a finite motion vocabulary.
 - Exact phoneme-to-viseme alignment. The app requests word timestamps from a transcription model, and maps speech activity to procedural mouth shapes. If word annotations are missing, word timing is estimated and the audio panel labels it accordingly.
 - Guaranteed 24 FPS on every device. The renderer requests the selected export rate, but CPU/GPU load, browser throttling, and MediaRecorder implementation determine actual output. The app measures preview FPS rather than claiming a guaranteed rate.
 - Guaranteed MP4 export. MediaRecorder exports MP4 only when the browser exposes a compatible MP4 codec. WebM is the standard fallback in Chrome/Edge.
@@ -96,6 +105,7 @@ vercel.json
 .env.example
 .gitignore
 README.md
+smoke.test.js
 api/
   health.js
   cartoon.js

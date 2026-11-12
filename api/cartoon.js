@@ -1,16 +1,16 @@
 'use strict';
 const { send, json, rateLimit, geminiRequest, extractText, parseJsonText, capText } = require('../server-utils');
 
-const SYSTEM = 'You are ArixCartoon, a concise 2D cartoon story director. Return only valid JSON. Create drawable actions for a reusable pencil-style character rig. Keep character appearance consistent, dialogue natural, and scenes visually distinct. Never request image or video generation.';
+const SYSTEM = 'You are ArixCartoon, a professional 2D animation director and storyboard artist. Return only valid JSON. Create specific, drawable actions for a reusable but expressive 2D character rig. Give every character a distinctive silhouette, face, skin tone, hairstyle, clothing design and accessory; never make two characters visually interchangeable. Give every scene a different, setting-accurate composition, specific props, staging, camera and physical action. Avoid static standing poses and generic repeated backgrounds. Never request image or video generation.';
 
 function fallbackProject({ prompt, style, tone, language, duration, aspectRatio, fps }) {
   const schoolStory = /\b(student|school|class|classroom|teacher|schoolbus|school bus|homework|uniform|backpack)\b/i.test(prompt);
   const main = {
     id: 'student-1', name: schoolStory ? 'Aarav' : 'Alex', role: 'main character',
     description: schoolStory ? 'A cheerful student with a neat hairstyle, school uniform, backpack and expressive pencil-drawn face.' : 'A friendly, expressive pencil-drawn story character with a consistent outfit and clear gestures.',
-    personality: 'curious, hopeful and determined', emotion: 'happy', color: '#5b91bf', hairColor: '#39312d', voice: 'Kore'
+    personality: 'curious, hopeful and determined', emotion: 'happy', color: '#5b91bf', hairColor: '#302923', skinColor: '#c98e6b', pantsColor: '#46546b', hairStyle: 'spiky', faceShape: 'angular', accessory: 'backpack', shirtPattern: 'vertical', heightScale: 1, bodyWidth: .94, voice: 'Kore'
   };
-  const friend = { id: 'friend-1', name: 'Maya', role: 'school friend', description: 'A friendly student with a simple consistent hairstyle, school uniform and bright expression.', personality: 'warm and encouraging', emotion: 'happy', color: '#d58c76', hairColor: '#49352f', voice: 'Puck' };
+  const friend = { id: 'friend-1', name: 'Maya', role: 'school friend', description: 'A friendly student with a simple consistent hairstyle, school uniform and bright expression.', personality: 'warm and encouraging', emotion: 'happy', color: '#d58c76', hairColor: '#49352f', skinColor: '#edc5a5', pantsColor: '#5b6655', hairStyle: 'long', faceShape: 'round', accessory: 'headband', shirtPattern: 'badge', heightScale: .96, bodyWidth: 1.04, voice: 'Puck' };
   const schoolScenes = [
     { title: 'A Bright New Morning', setting: 'A cozy student bedroom in the morning, sunlight entering through a window', action: 'Aarav wakes up, sits on the bed, stretches and smiles as the morning light fills the room.', camera: 'wide shot', emotion: 'happy', narration: 'The morning sun peeked through the window. Aarav jumped out of bed, ready for a brand-new school day.', dialogue: [{ speaker: 'Aarav', text: 'Good morning! I am ready for school.', emotion: 'excited' }], characters: ['student-1'] },
     { title: 'Packing the School Bag', setting: 'A neat home study desk with books, pencils and a school backpack', action: 'Aarav places a notebook, pencil case and lunchbox into the backpack, then checks the bag.', camera: 'medium shot', emotion: 'focused', narration: 'He packed his books, sharpened pencils and lunch. One quick check, and everything was ready.', dialogue: [], characters: ['student-1'] },
@@ -99,7 +99,7 @@ module.exports = async (req, res) => {
     `STORY IDEA: ${JSON.stringify(prompt)}`,
     `Create a ${values.duration}-second ${values.style} cartoon. Mood: ${values.tone}. Spoken language: ${values.language}. Aspect ratio: ${values.aspectRatio}.`,
     'Return one JSON object only. Use 4 or 5 scenes and 1 or 2 recurring characters. Each scene needs: id,title,setting,action,camera,emotion,duration,characters,narration,dialogue. Each character needs: id,name,role,description,personality,emotion,color,hairColor,voice.',
-    'Make a clear beginning, progression and satisfying ending. Give every scene a specific visible action suitable for a simple 2D character rig. Keep narration and dialogue concise (about 65-95 spoken words total for 45 seconds). Character IDs must match scene character IDs. No markdown.'
+    'Make a clear beginning, progression and satisfying ending. Each scene must show a different physical pose/action (walk, run, sit, bend, wave, point, write, jump, reach, turn, carry, react); never use standing still as the main action twice in a row. Specify a concrete environment with 3-5 recognizable props in setting/action. Use distinct locations when the story changes location. Character IDs must match scene character IDs. Keep narration and dialogue concise (about 65-95 spoken words total for 45 seconds). No markdown.'
   ].join('\n');
 
   try {
